@@ -1,55 +1,48 @@
 body {
   margin: 0;
-  font-family: monospace;
   background: #111;
-  color: white;
-  text-align: center;
   overflow: hidden;
 }
 
-#home-screen {
-  position: absolute;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-button {
-  padding: 10px 20px;
-  margin: 10px;
-  background: #444;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-button:hover {
-  background: #666;
-}
-
 #gameCanvas {
-  display: none;
-  background: #1e1e2f;
+  display: block;
   width: 100vw;
   height: 100vh;
+  background: black;
 }
 
-#hud {
+#ui {
   position: absolute;
   top: 10px;
   left: 10px;
-  display: none;
+  display: flex;
   gap: 10px;
+  align-items: center;
+  z-index: 10;
 }
 
 #water-container {
   width: 200px;
   height: 20px;
+  border: 2px solid #fff;
   background: #333;
-  border: 2px solid white;
+  overflow: hidden;
 }
 #water-bar {
   height: 100%;
   width: 100%;
   background: cyan;
+  transition: width 0.2s linear;
+}
+
+button {
+  background: #444;
+  border: none;
+  color: #fff;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+button:hover {
+  background: #666;
 }
