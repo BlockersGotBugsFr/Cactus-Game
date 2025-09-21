@@ -4,6 +4,7 @@ body {
   background: #111;
   color: white;
   text-align: center;
+  overflow: hidden;
 }
 
 #home-screen {
@@ -29,7 +30,26 @@ button:hover {
 #gameCanvas {
   display: none;
   background: #1e1e2f;
-  border: 2px solid #fff;
-  margin: 20px auto;
-  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+#hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: none;
+  gap: 10px;
+}
+
+#water-container {
+  width: 200px;
+  height: 20px;
+  background: #333;
+  border: 2px solid white;
+}
+#water-bar {
+  height: 100%;
+  width: 100%;
+  background: cyan;
 }
