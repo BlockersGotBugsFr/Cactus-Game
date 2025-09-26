@@ -1,68 +1,68 @@
+Conversation opened. 1 read message. 
+
+Skip to content
+Using Gmail with screen readers
+10 of 291
+(no subject)
+Inbox
+
+Deledao Unblocked <deledaounblocked@gmail.com>
+Sat, Sep 20, 7:32 PM (6 days ago)
+to me
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+
+const homeScreen = document.getElementById("home-screen");
+const playBtn = document.getElementById("play-btn");
+const levelSelect = document.getElementById("level-select");
+const waterBar = document.getElementById("water-bar");
+const hud = document.getElementById("hud");
+const fullscreenBtn = document.getElementById("fullscreen-btn");
 
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 let keys = {};
-let gameState = "MENU"; // MENU, LEVEL, PAUSE, DEATH, WIN
-let currentLevel = 1;
-let unlockedLevels = 1;
-let entities = [];
-let particles = [];
-let player;
-let cameraX = 0;
+let player, platforms, enemies, waters, goal, cameraX, currentLevel, unlockedLevels = 1;
+let gameState = "home"; // "home", "playing", "dead", "win"
+let animationId;
 
-// ========== GAME OBJECT CLASSES ==========
-
-// Parallax Background
-class Background {
-  constructor(img, speed) {
-    this.img = img;
-    this.speed = speed;
-  }
-  draw() {
-    const w = canvas.width;
-    const h = canvas.height;
-    const x = -cameraX * this.speed % w;
-    ctx.drawImage(this.img, x, 0, w, h);
-    ctx.drawImage(this.img, x + w, 0, w, h);
-  }
-}
-
-// Player (Cactus)
+// --- PLAYER (Cactus) ---
 class Player {
   constructor(x, y) {
-    this.x = x; this.y = y;
-    this.vx = 0; this.vy = 0;
-    this.width = 40; this.height = 60;
+    this.x = x;
+    this.y = y;
+    this.width = 40;
+    this.height = 60;
+    this.vx = 0;
+    this.vy = 0;
     this.onGround = false;
     this.water = 100;
-    this.frame = 0;
   }
-  update() {
-    // Gravity
-    this.vy += 0.5;
 
-    // Movement
+  update() {
+    this.vy += 0.5; // gravity
+
     if (keys["ArrowLeft"]) this.vx = -4;
     else if (keys["ArrowRight"]) this.vx = 4;
     else this.vx = 0;
 
-    // Jump
     if (keys[" "] && this.onGround) {
       this.vy = -12;
       this.onGround = false;
-      spawnDust(this.x, this.y + this.height);
     }
 
     this.x += this.vx;
     this.y += this.vy;
 
-    // Collisions
+    // collisions
     this.onGround = false;
-    for (let p of entities.filter(e => e.type === "platform")) {
-      if (checkCollision(this, p)) {
+    for (let p of platforms) {
+      if (this.x < p.x + p.width &&
+          this.x + this.width > p.x &&
+          this.y < p.y + p.height &&
+          this.y + this.height > p.y) {
         if (this.vy > 0) {
           this.y = p.y - this.height;
           this.vy = 0;
@@ -71,66 +71,56 @@ class Player {
       }
     }
 
-    // Collect water
-    for (let w of entities.filter(e => e.type === "water" && !e.collected)) {
-      if (checkCollision(this, w)) {
+    // collect water
+    for (let w of waters) {
+      if (!w.collected &&
+          this.x < w.x + w.width &&
+          this.x + this.width > w.x &&
+          this.y < w.y + w.height &&
+          this.y + this.height > w.y) {
         this.water = Math.min(100, this.water + 30);
         w.collected = true;
-        spawnSparkle(w.x, w.y);
       }
     }
 
-    // Enemy hit
-    for (let e of entities.filter(e => e.type === "enemy")) {
-      if (checkCollision(this, e)) {
-        triggerDeath();
+    // enemy collision
+    for (let e of enemies) {
+      if (this.x < e.x + e.width &&
+          this.x + this.width > e.x &&
+          this.y < e.y + e.height &&
+          this.y + this.height > e.y) {
+        gameOver();
       }
     }
 
-    // Flag
-    for (let f of entities.filter(e => e.type === "flag")) {
-      if (checkCollision(this, f)) {
-        triggerWin();
-      }
+    // reach goal
+    if (this.x + this.width > goal.x &&
+        this.y + this.height > goal.y &&
+        this.y < goal.y + goal.height) {
+      winLevel();
     }
 
-    // Water drain
+    // water drains
     this.water -= 0.05;
-    if (this.water <= 0) triggerDeath();
+    if (this.water <= 0) gameOver();
 
-    // Update HUD
-    document.getElementById("water-bar").style.width = this.water + "%";
+    // update HUD
+    waterBar.style.width = this.water + "%";
   }
+
   draw() {
-    ctx.fillStyle = "green";
+    ctx.fillStyle = "green"; // cactus placeholder
     ctx.fillRect(this.x - cameraX, this.y, this.width, this.height);
   }
 }
 
-// Enemy
-class Enemy {
-  constructor(x, y) {
-    this.x = x; this.y = y;
-    this.width = 40; this.height = 40;
-    this.dir = 1;
-    this.type = "enemy";
-  }
-  update() {
-    this.x += this.dir * 2;
-    if (this.x < 200 || this.x > 800) this.dir *= -1;
-  }
-  draw() {
-    ctx.fillStyle = "red";
-    ctx.fillRect(this.x - cameraX, this.y, this.width, this.height);
-  }
-}
-
-// Platform
+// --- PLATFORM ---
 class Platform {
   constructor(x, y, w, h) {
-    this.x = x; this.y = y;
-    this.width = w; this.height = h;
-    this.type = "platform";
+    this.x = x;
+    this.y = y;
+    this.width = w;
+    this.height = h;
   }
   draw() {
     ctx.fillStyle = "brown";
@@ -138,13 +128,14 @@ class Platform {
   }
 }
 
-// Water
+// --- WATER PICKUP ---
 class WaterPickup {
   constructor(x, y) {
-    this.x = x; this.y = y;
-    this.width = 20; this.height = 20;
+    this.x = x;
+    this.y = y;
+    this.width = 20;
+    this.height = 20;
     this.collected = false;
-    this.type = "water";
   }
   draw() {
     if (!this.collected) {
@@ -154,99 +145,208 @@ class WaterPickup {
   }
 }
 
-// Flag
-class Flag {
-  constructor(x, y) {
-    this.x = x; this.y = y;
-    this.width = 40; this.height = 60;
-    this.type = "flag";
+// --- ENEMY ---
+class Enemy {
+  constructor(x, y, range=200) {
+    this.startX = x;
+    this.x = x;
+    this.y = y;
+    this.width = 40;
+    this.height = 40;
+    this.dir = 1;
+    this.range = range;
+  }
+  update() {
+    this.x += this.dir * 2;
+    if (this.x > this.startX + this.range || this.x < this.startX - this.range) {
+      this.dir *= -1;
+    }
   }
   draw() {
-    ctx.fillStyle = "yellow";
+    ctx.fillStyle = "red";
     ctx.fillRect(this.x - cameraX, this.y, this.width, this.height);
   }
 }
 
-// Particle System
-function spawnDust(x, y) {
-  particles.push({x, y, life: 30, color: "gray"});
-}
-function spawnSparkle(x, y) {
-  particles.push({x, y, life: 30, color: "cyan"});
-}
-function updateParticles() {
-  for (let p of particles) {
-    p.life--;
+// --- GOAL FLAG ---
+class Goal {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.width = 40;
+    this.height = 100;
   }
-  particles = particles.filter(p => p.life > 0);
-}
-function drawParticles() {
-  for (let p of particles) {
-    ctx.fillStyle = p.color;
-    ctx.fillRect(p.x - cameraX, p.y, 5, 5);
+  draw() {
+    ctx.fillStyle = "yellow";
+    ctx.fillRect(this.x - cameraX, this.y - this.height, this.width, this.height);
   }
 }
 
-// ========== GAME HELPERS ==========
-function checkCollision(a, b) {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
-}
-
-function triggerDeath() {
-  gameState = "DEATH";
-  setTimeout(() => startLevel(currentLevel), 2000);
-}
-function triggerWin() {
-  gameState = "WIN";
-  unlockedLevels = Math.max(unlockedLevels, currentLevel + 1);
-  setTimeout(() => startLevel(currentLevel + 1), 2000);
-}
-
-// ========== LEVEL DATA ==========
+// --- LEVELS ---
 const levels = {
-  1: () => {
-    entities = [
+  1: () => ({
+    platforms: [
       new Platform(0, canvas.height - 50, 2000, 50),
       new Platform(300, canvas.height - 150, 100, 20),
-      new Enemy(500, canvas.height - 90),
-      new WaterPickup(320, canvas.height - 170),
-      new Flag(1800, canvas.height - 110)
-    ];
-    player = new Player(50, canvas.height - 200);
-  }
+      new Platform(600, canvas.height - 250, 100, 20),
+      new Platform(900, canvas.height - 350, 100, 20)
+    ],
+    waters: [ new WaterPickup(320, canvas.height - 170) ],
+    enemies: [ new Enemy(500, canvas.height - 90) ],
+    goal: new Goal(1500, canvas.height - 50)
+  }),
+  2: () => ({
+    platforms: [
+      new Platform(0, canvas.height - 50, 2000, 50),
+      new Platform(400, canvas.height - 150, 100, 20),
+      new Platform(800, canvas.height - 250, 100, 20)
+    ],
+    waters: [ new WaterPickup(820, canvas.height - 270) ],
+    enemies: [ new Enemy(600, canvas.height - 90, 300) ],
+    goal: new Goal(1700, canvas.height - 50)
+  }),
+  3: () => ({
+    platforms: [
+      new Platform(0, canvas.height - 50, 2500, 50),
+      new Platform(500, canvas.height - 200, 100, 20),
+      new Platform(1000, canvas.height - 300, 100, 20)
+    ],
+    waters: [ new WaterPickup(520, canvas.height - 220), new WaterPickup(1020, canvas.height - 320) ],
+    enemies: [ new Enemy(700, canvas.height - 90), new Enemy(1200, canvas.height - 90, 400) ],
+    goal: new Goal(2000, canvas.height - 50)
+  })
 };
 
-// ========== GAME LOOP ==========
+// --- GAME LOOP ---
 function gameLoop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  if (gameState === "LEVEL") {
-    player.update();
-    entities.forEach(e => e.update?.());
-    cameraX = player.x - canvas.width / 2;
+  player.update();
+  enemies.forEach(e => e.update());
 
-    entities.forEach(e => e.draw());
-    player.draw();
-    updateParticles();
-    drawParticles();
-  }
+  // smooth camera
+  let targetCam = player.x - canvas.width / 2;
+  cameraX += (targetCam - cameraX) * 0.1;
 
-  requestAnimationFrame(gameLoop);
+  // draw
+  platforms.forEach(p => p.draw());
+  waters.forEach(w => w.draw());
+  enemies.forEach(e => e.draw());
+  goal.draw();
+  player.draw();
+
+  if (gameState === "playing") animationId = requestAnimationFrame(gameLoop);
 }
 
-// ========== START ==========
-function startLevel(lvl) {
-  currentLevel = lvl;
-  levels[lvl]();
-  gameState = "LEVEL";
-}
-
+// --- INPUT ---
 document.addEventListener("keydown", e => keys[e.key] = true);
 document.addEventListener("keyup", e => keys[e.key] = false);
 
-gameLoop();
+// --- UI ---
+playBtn.addEventListener("click", () => {
+  playBtn.style.display = "none";
+  levelSelect.style.display = "block";
+});
+
+document.querySelectorAll(".level-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const level = parseInt(btn.dataset.level);
+    if (level <= unlockedLevels) startGame(level);
+  });
+});
+
+function startGame(level) {
+  cancelAnimationFrame(animationId);
+
+  homeScreen.style.display = "none";
+  canvas.style.display = "block";
+  hud.style.display = "flex";
+
+  const data = levels[level](); // fresh copy every time
+  platforms = data.platforms;
+  waters = data.waters;
+  enemies = data.enemies;
+  goal = data.goal;
+
+  player = new Player(50, canvas.height - 200);
+  cameraX = 0;
+  currentLevel = level;
+  gameState = "playing";
+
+  gameLoop();
+}
+
+function resetLevel() {
+  startGame(currentLevel);
+}
+
+function gameOver() {
+  cancelAnimationFrame(animationId);
+  gameState = "dead";
+  showOverlay("💀 You Died!", () => resetLevel());
+}
+
+function winLevel() {
+  cancelAnimationFrame(animationId);
+  gameState = "win";
+
+  if (currentLevel === unlockedLevels && unlockedLevels < 3) {
+    unlockedLevels++;
+    document.querySelector(`.level-btn[data-level="${unlockedLevels}"]`).disabled = false;
+  }
+
+  showOverlay("🎉 Level Complete!", () => {
+    if (currentLevel < 3) startGame(currentLevel + 1);
+    else goHome();
+  });
+}
+
+function showOverlay(message, onRetry) {
+  const overlay = document.createElement("div");
+  overlay.style.position = "absolute";
+  overlay.style.top = "0";
+  overlay.style.left = "0";
+  overlay.style.width = "100%";
+  overlay.style.height = "100%";
+  overlay.style.background = "rgba(0,0,0,0.7)";
+  overlay.style.display = "flex";
+  overlay.style.flexDirection = "column";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.color = "white";
+  overlay.style.fontSize = "40px";
+  overlay.innerHTML = `
+    <p>${message}</p>
+    <button id="retry-btn">Retry</button>
+    <button id="home-btn">Home</button>
+  `;
+  document.body.appendChild(overlay);
+
+  document.getElementById("retry-btn").onclick = () => {
+    overlay.remove();
+    onRetry();
+  };
+  document.getElementById("home-btn").onclick = () => {
+    overlay.remove();
+    goHome();
+  };
+}
+
+function goHome() {
+  cancelAnimationFrame(animationId);
+  gameState = "home";
+  canvas.style.display = "none";
+  hud.style.display = "none";
+  homeScreen.style.display = "block";
+  playBtn.style.display = "block";
+  levelSelect.style.display = "block";
+}
+
+// --- Fullscreen ---
+fullscreenBtn.addEventListener("click", () => {
+  if (!document.fullscreenElement) {
+    canvas.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+});
