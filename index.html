@@ -1,20 +1,46 @@
+Conversation opened. 1 read message. 
+
+Skip to content
+Using Gmail with screen readers
+13 of 291
+(no subject)
+Inbox
+
+Deledao Unblocked <deledaounblocked@gmail.com>
+Sat, Sep 20, 7:25 PM (6 days ago)
+to me
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cactus Quest 🌵</title>
+  <title>Cactus Platformer</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- HOME SCREEN -->
+  <div id="home-screen">
+    <h1>Cactus Quest 🌵</h1>
+    <button id="play-btn">Play</button>
+    <div id="level-select" style="display:none;">
+      <button class="level-btn" data-level="1">Level 1</button>
+      <button class="level-btn" data-level="2" disabled>Level 2</button>
+      <button class="level-btn" data-level="3" disabled>Level 3</button>
+    </div>
+  </div>
+
+  <!-- GAME CANVAS -->
   <canvas id="gameCanvas"></canvas>
-  <div id="ui">
+
+  <!-- Water Bar -->
+  <div id="hud">
     <div id="water-container">
       <div id="water-bar"></div>
     </div>
-    <button id="pause-btn">⏸</button>
-    <button id="fullscreen-btn">⛶</button>
+    <button id="fullscreen-btn">Fullscreen</button>
   </div>
+
   <script src="game.js"></script>
 </body>
 </html>
